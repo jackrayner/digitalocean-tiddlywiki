@@ -2,7 +2,7 @@
 
 This project is for deploying a basic
 [TiddlyWiki Server](https://tiddlywiki.com/static/WebServer.html) on DigitalOcean
-sing Terraform. This project is still very much in its infancy so is subject to
+using Terraform. This project is still very much in its infancy so is subject to
 major changes.
 
 ## Prerequisites
