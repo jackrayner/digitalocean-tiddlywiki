@@ -1,3 +1,6 @@
+# MIT License
+# Copyright (c) 2020 Jack Rayner <me@jrayner.net>
+
 # Configure the DigitalOcean Provider
 provider "digitalocean" {
 }
@@ -9,8 +12,8 @@ terraform {
 data "template_file" "tiddlywiki_user_data" {
   template = "${file("${path.module}/user_data.sh.tpl")}"
   vars = {
-    hostname = var.hostname
-    domain = var.domain
+    hostname      = var.hostname
+    domain        = var.domain
     certbot_email = var.certbot_email
   }
 }
@@ -33,5 +36,5 @@ resource "digitalocean_record" "tiddlywiki_server" {
 }
 
 output "tiddlywiki_server" {
-    value = digitalocean_droplet.tiddlywiki_server.ipv4_address
+  value = digitalocean_droplet.tiddlywiki_server.ipv4_address
 }

@@ -1,3 +1,6 @@
+# MIT License
+# Copyright (c) 2020 Jack Rayner <me@jrayner.net>
+
 bucket = "example-bucket"
 key    = "some_directory/terraform.tfstate"
 region = "eu-central-1"

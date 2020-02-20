@@ -1,5 +1,8 @@
 #!/bin/sh
 
+# MIT License
+# Copyright (c) 2020 Jack Rayner <me@jrayner.net>
+
 fallocate -l 2G /swapfile
 chmod 0600 /swapfile
 mkswap /swapfile

@@ -1,27 +1,30 @@
+# MIT License
+# Copyright (c) 2020 Jack Rayner <me@jrayner.net>
+
 variable "hostname" {
-    type = string
+  type = string
 }
 
 variable "domain" {
-    type = string
+  type = string
 }
 
 variable "certbot_email" {
-    type = string
+  type = string
 }
 
 variable "droplet_size" {
-    type = string
+  type = string
 }
 
 variable "droplet_region" {
-    type = string
+  type = string
 }
 
 variable "ssh_keys" {
-    type = list(string)
+  type = list(string)
 }
 
 variable "tags" {
-    type = list(string)
+  type = list(string)
 }
