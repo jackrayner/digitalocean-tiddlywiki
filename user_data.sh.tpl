@@ -3,14 +3,32 @@
 # MIT License
 # Copyright (c) 2020 Jack Rayner <me@jrayner.net>
 
+# Kinda naughty, create a 2GB swapfile on the disk.
+# (Useful for small droplets with low RAM)
 fallocate -l 2G /swapfile
 chmod 0600 /swapfile
 mkswap /swapfile
 swapon /swapfile
+# Add required repos
+apt-get update
+apt-get install curl
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
 add-apt-repository universe
 add-apt-repository ppa:certbot/certbot
-apt-get update
-apt-get install --assume-yes certbot python-certbot-nginx nodejs npm software-properties-common nginx
+add-apt-repository \
+   "deb [arch=amd64] https://download.docker.com/linux/ubuntu \
+   $(lsb_release -cs) \
+   stable"
+apt-get install --assume-yes \
+    apt-transport-https \
+    ca-certificates \
+    gnupg-agent \
+    nginx \
+    certbot \
+    python-certbot-nginx \
+    software-properties-common
+apt-get install --assume-yes docker-ce docker-ce-cli containerd.io
+# Enable nginx servce and run certbot
 systemctl enable nginx
 certbot certonly -n --agree-tos -m ${certbot_email} --nginx --domains "${hostname}.${domain}"
 cat <<EOF > /etc/nginx/sites-enabled/default
@@ -52,7 +70,59 @@ server {
     }
 }
 EOF
-systemctl restart nginx
-npm install -g tiddlywiki
-tiddlywiki newwiki --init server
-tiddlywiki newwiki --listen &
+
+mkdir /etc/tiddlywiki/
+cat <<EOF > /etc/systemd/system/wiki.service
+# MIT License
+# Copyright (c) 2020 Jack Rayner <me@jrayner.net>
+[Unit]
+Description=TiddlyWiki Container
+After=docker.service
+Requires=docker.service
+
+[Service]
+Restart=always
+RestartSec=5
+TimeoutStartSec=60
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=%n
+Environment="TW_PORT=8080"
+Environment="TW_DOCKERVOLUME=%n"
+Environment="TW_DOCKERUID=0"
+Environment="TW_DOCKERGID=0"
+EnvironmentFile=/etc/tiddlywiki/%n.conf
+ExecStartPre=-/usr/bin/docker stop %n
+ExecStartPre=-/usr/bin/docker rm %n
+ExecStartPre=/usr/bin/docker pull nicolaw/tiddlywiki
+ExecStart=/usr/bin/docker run -p \$${TW_PORT}:\$${TW_PORT} -e TW_PORT=\$${TW_PORT} --env-file /etc/tiddlywiki/%n.conf --user \$${TW_DOCKERUID}:\$${TW_DOCKERGID} -v \$${TW_DOCKERVOLUME}:/var/lib/tiddlywiki --name %n nicolaw/tiddlywiki
+ExecStop=-/usr/bin/docker stop %n
+EOF
+cat <<EOF > /etc/tiddlywiki/wiki.service.conf
+# MIT License
+# Copyright (c) 2020 Jack Rayner <me@jrayner.net>
+#
+# Refer to the canonical online documentation for help.
+# - https://tiddlywiki.com/static/Using%2520TiddlyWiki%2520on%2520Node.js.html
+# - https://tiddlywiki.com/static/ServerCommand.html
+#
+# Uncomment and change the key=value configuration pairs below.
+#
+TW_WIKINAME=wiki
+TW_USERNAME=jack
+TW_PASSWORD=password
+TW_PORT=8080
+#TW_ROOTTIDDLER=$:/core/save/all
+#TW_RENDERTYPE=text/plain
+#TW_SERVETYPE=text/html
+#TW_HOST=0.0.0.0
+#TW_PATHPREFIX=
+#NODE_MEM=400
+#NODE_OPTIONS=
+TW_DOCKERVOLUME=/root/tiddlywiki
+#TW_DOCKERUID=0
+#TW_DOCKERGID=0
+EOF
+systemctl daemon-reload
+systemctl start wiki.service
+systemctl restart nginx.service
