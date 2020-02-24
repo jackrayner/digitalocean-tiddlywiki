@@ -1,0 +1,89 @@
+---
+# MIT License
+# Copyright (c) 2020 Jack Rayner <me@jrayner.net>
+
+# https://docs.docker.com/compose/compose-file
+
+version: "3.7"
+
+volumes:
+  www:
+  tiddlywiki:
+  # BUG: https://github.com/moby/moby/issues/3465
+  #letsencrypt:
+
+services:
+  letsencrypt:
+    image: certbot/certbot:v1.2.0
+    environment:
+      EMAIL: "${EMAIL:-webmaster@localhost.localdomain}"
+      DOMAIN: "${DOMAIN:-localhost.localdomain}"
+    volumes:
+      - source: www
+        target: /var/www/html
+        type: volume
+      - source: "${LETSENCRYPT_DATA:-/etc/letsencrypt}"
+        target: /etc/letsencrypt
+        # BUG: https://github.com/moby/moby/issues/3465
+        type: bind
+    depends_on:
+      - nginx
+    healthcheck:
+      # TODO: Use openssl and/or certbot to validate the certificates and expiry dates.
+      test: ["CMD", "ls", "/etc/letsencrypt/live/$DOMAIN/cert.pem"]
+      interval: 1m
+      timeout: 2s
+      retries: 3
+      start_period: 10s
+
+  tiddlywiki:
+    image: nicolaw/tiddlywiki
+    environment:
+      TW_USERNAME: "${TW_USERNAME:-anonymous}"
+    expose:
+      - 8080
+    volumes:
+      - source: tiddlywiki
+        target: /var/lib/tiddlywiki/wiki
+        type: volume
+    healthcheck:
+      # TODO: Improve this to retrieve a known core system tiddler perhaps?
+      test: ["CMD-SHELL", "printf 'GET /status HTTP/1.0\r\nHost: dinglebop.com\r\n\r\n' | nc localhost 8080 | grep -wq tiddlywiki_version"]
+      interval: 1m
+      timeout: 2s
+      retries: 3
+      start_period: 10s
+
+  nginx:
+    build:
+      context: nginx:1.16.1
+    environment:
+      EMAIL: "${EMAIL:-webmaster@localhost.localdomain}"
+      DOMAIN: "${DOMAIN:-localhost.localdomain}"
+      TW_USERNAME: "${TW_USERNAME:-anonymous}"
+      TW_PASSWORD: "${TW_PASSWORD:-password}"
+      TW_PRIVATE: "${TW_PRIVATE:-}"
+    depends_on:
+      - tiddlywiki
+    links:
+      - tiddlywiki:8080
+    ports:
+      - 80:80
+      - 443:443
+    volumes:
+      - source: www
+        target: /var/www/html
+        type: volume
+        read_only: true
+      - source: "${LETSENCRYPT_DATA:-/etc/letsencrypt}"
+        target: /etc/letsencrypt
+        # BUG: https://github.com/moby/moby/issues/3465
+        type: bind
+        read_only: true
+    healthcheck:
+      # TODO: Improve to test operation modes of all three tcp/80,443,444 ports.
+      test: ["CMD-SHELL", "printf 'HEAD / HTTP/1.1\r\nHost: dinglebop.com\r\n\r\n' | nc localhost 80 | grep -wqF 'Location: https://dinglebop.com/'"]
+      interval: 1m
+      timeout: 2s
+      retries: 3
+      start_period: 10s

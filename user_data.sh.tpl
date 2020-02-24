@@ -28,6 +28,10 @@ apt-get install --assume-yes \
     python-certbot-nginx \
     software-properties-common
 apt-get install --assume-yes docker-ce docker-ce-cli containerd.io
+
+# /etc/letsencrypt > this is where the certificates are stored
+# /var/www/certbot > this is where the acme challenge is
+
 # Enable nginx servce and run certbot
 systemctl enable nginx
 certbot certonly -n --agree-tos -m ${certbot_email} --nginx --domains "${hostname}.${domain}"
